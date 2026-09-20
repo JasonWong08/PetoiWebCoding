@@ -4135,6 +4135,9 @@ Generated at: ${now.toISOString()}
     // 设备IP地址
     let currentDeviceIP = '192.168.4.1'; // 默认IP地址
     let isGettingIP = false; // 标志是否正在获取IP地址
+    let quickConnectPromise = null; // 共享当前Quick Connect流程，避免重复点击启动并发连接
+    let wifiCommandPromise = null; // 共享正在进行的IP获取流程，避免重复发送w指令
+    let ipResponseWaiters = []; // 等待串口返回有效IP的回调
     let hasShownWifiDialog = false; // 标志是否已经显示过WiFi配置对话框
 
     // 配置文件相关
@@ -5456,7 +5459,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
             const displayName = getSmartPortDisplayName(port, validPorts);
             const portInfo = port.getInfo();
             const isESP32 = isESP32SerialPort(port);
-            console.log(getText("portInfo").replace("{index}", index + 1).replace("{name}", displayName));
+            console.log(getText("authorizedPortInfo").replace("{index}", index + 1).replace("{name}", displayName));
             console.log(getText("hardwareInfo").replace("{vid}", portInfo.usbVendorId?.toString(16)).replace("{pid}", portInfo.usbProductId?.toString(16)).replace("{isESP32}", isESP32));
             if (isLikelyBluetoothSerialPortInfo(portInfo))
             {
@@ -5491,7 +5494,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           try
           {
             const pinfo = selectedPort.getInfo();
-            console.log(getText("portInfo").replace("{index}", 1).replace("{name}", getSerialPortDisplayName(selectedPort)));
+            console.log(getText("selectedPortInfo").replace("{name}", getSerialPortDisplayName(selectedPort)));
             console.log(getText("hardwareInfo").replace("{vid}", pinfo.usbVendorId?.toString(16)).replace("{pid}", pinfo.usbProductId?.toString(16)).replace("{isESP32}", isESP32SerialPort(selectedPort)));
             if (isLikelyBluetoothSerialPortInfo(pinfo))
             {
@@ -5509,7 +5512,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           try
           {
             const pinfo = selectedPort.getInfo();
-            console.log(getText("portInfo").replace("{index}", 1).replace("{name}", getSerialPortDisplayName(selectedPort)));
+            console.log(getText("selectedPortInfo").replace("{name}", getSerialPortDisplayName(selectedPort)));
             console.log(getText("hardwareInfo").replace("{vid}", pinfo.usbVendorId?.toString(16)).replace("{pid}", pinfo.usbProductId?.toString(16)).replace("{isESP32}", isESP32SerialPort(selectedPort)));
             if (isLikelyBluetoothSerialPortInfo(pinfo))
             {
@@ -5609,15 +5612,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           throw streamError;
         }
 
-        // 尝试获取设备信息（非强制）：发送'?'查询机型/版本，但不再以此作为打开串口的前置条件
-        try
-        {
-          console.log(getText("validatingSerialConnection"));
-          // 异步尝试，不阻塞也不影响后续流程
-          validateSerialConnection().catch(() => { /* ignore validation errors */ });
-        } catch (e) { /* ignore */ }
-
-        // 验证成功后显示串口界面
+        // 串口打开后立即显示监视界面，后续验证数据会在其中显示
         const serialInterface = document.getElementById('serialInterface');
         serialInterface.style.display = 'flex';
 
@@ -5678,7 +5673,24 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
         }, 100);
 
         // 开始读取串口数据
-        readSerialData();
+        readSerialData().catch(() => { /* readSerialData内部已处理错误 */ });
+
+        // 读取循环启动后再查询设备信息。必须等待验证流程完全结束，
+        // 避免'?'与w指令在设备尚未就绪时几乎同时写入串口。
+        try
+        {
+          console.log(getText("validatingSerialConnection"));
+          const validationSucceeded = await validateSerialConnection();
+          if (!validationSucceeded)
+          {
+            // 某些固件不返回可识别的型号字符串，但仍可能支持w指令。
+            // 验证超时后再给串口一个短暂的稳定时间。
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (e)
+        {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
 
         // 串口连接成功，IP地址将由makeConnection积木统一处理
         if (showDebug) console.log(getText("serialConnectedWaitingMakeConnection"));
@@ -5933,33 +5945,52 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           }
         } catch (error)
         {
-          // runCode流程下，若已检测到蓝牙SPP端口但串口仍未打开，不应误导到WiFi本地页面提示
-          if (!forceShowDialog && await hasAuthorizedBluetoothSPPPort())
+          // 另一个连接流程可能已在当前异步操作失败期间打开了串口。
+          // 此时继续尝试旧IP或显示WiFi对话框会覆盖新连接的成功状态。
+          if (hasActiveSerialConnection())
           {
-            const btError = new Error(getText("bluetoothSerialConnectFirst"));
-            btError.code = 'BLUETOOTH_SERIAL_CONNECT_FIRST';
-            throw btError;
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log('Serial connection became active; skipping stale fallback flow');
+            }
           }
-
-          if (typeof showDebug !== 'undefined' && showDebug)
+          else
           {
-            console.log('Serial port connection failed, trying configured IP...');
-          }
+            // runCode流程下，若已检测到蓝牙SPP端口但串口仍未打开，不应误导到WiFi本地页面提示
+            if (!forceShowDialog && await hasAuthorizedBluetoothSPPPort())
+            {
+              const btError = new Error(getText("bluetoothSerialConnectFirst"));
+              btError.code = 'BLUETOOTH_SERIAL_CONNECT_FIRST';
+              throw btError;
+            }
 
-          // 串口连接失败，尝试使用配置文件中的IP地址
-          const connectedWithConfig = await tryConnectWithConfigIP();
+            if (typeof showDebug !== 'undefined' && showDebug)
+            {
+              console.log('Serial port connection failed, trying configured IP...');
+            }
 
-          if (connectedWithConfig === 'blocked')
-          {
-            return;
-          }
+            // 串口连接失败，尝试使用配置文件中的IP地址
+            const connectedWithConfig = await tryConnectWithConfigIP();
 
-          if (!connectedWithConfig)
-          {
-            // 如果配置的IP地址也连接失败，显示WiFi配置对话框
-            console.log('Both serial and configured IP failed, showing WiFi config dialog');
-            showWifiConfigDialog(forceShowDialog);
-            return; // 显示WiFi配置界面后退出
+            if (connectedWithConfig === 'blocked')
+            {
+              return;
+            }
+
+            if (!connectedWithConfig)
+            {
+              // 等待配置IP期间也可能已建立新串口连接，显示对话框前必须再次确认。
+              if (!hasActiveSerialConnection())
+              {
+                console.log('Both serial and configured IP failed, showing WiFi config dialog');
+                showWifiConfigDialog(forceShowDialog);
+                return; // 显示WiFi配置界面后退出
+              }
+              if (typeof showDebug !== 'undefined' && showDebug)
+              {
+                console.log('Serial connection became active while checking configured IP; skipping WiFi dialog');
+              }
+            }
           }
         }
       }
@@ -5973,8 +6004,24 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
 
     async function quickConnect()
     {
+      if (quickConnectPromise)
+      {
+        return quickConnectPromise;
+      }
+
+      const quickConnectBtn = document.getElementById('quickConnectBtn');
+      if (quickConnectBtn) quickConnectBtn.disabled = true;
+
       // Quick Connect总是强制显示WiFi配置对话框（如果需要）
-      await handleWifiConnection(true);
+      quickConnectPromise = handleWifiConnection(true);
+      try
+      {
+        return await quickConnectPromise;
+      } finally
+      {
+        quickConnectPromise = null;
+        if (quickConnectBtn) quickConnectBtn.disabled = false;
+      }
     }
 
     function closeWifiDialog()
@@ -5983,6 +6030,44 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       const overlay = document.querySelector('.overlay');
       if (dialog) dialog.remove();
       if (overlay) overlay.remove();
+    }
+
+    // 等待串口解析器收到一条明确的有效IP响应。
+    // 等待器要在写入w指令之前创建，避免遗漏返回很快的设备响应。
+    function waitForDetectedIP(timeoutMs)
+    {
+      let finish = null;
+      const promise = new Promise((resolve) =>
+      {
+        let settled = false;
+        const waiter = (ip) =>
+        {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(ip);
+        };
+        finish = waiter;
+        const timer = setTimeout(() =>
+        {
+          if (settled) return;
+          settled = true;
+          ipResponseWaiters = ipResponseWaiters.filter(item => item !== waiter);
+          resolve(null);
+        }, timeoutMs);
+        ipResponseWaiters.push(waiter);
+      });
+      return {
+        promise,
+        cancel: () =>
+        {
+          if (finish)
+          {
+            ipResponseWaiters = ipResponseWaiters.filter(item => item !== finish);
+            finish(null);
+          }
+        }
+      };
     }
 
     // 发送WiFi命令获取IP地址（内部使用）
@@ -5995,63 +6080,73 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
         return Promise.reject(new Error('No serial writer available'));
       }
 
-      // 如果正在获取IP，等待之前的操作完成
-      if (isGettingIP)
+      // 如果正在获取IP，共享同一个流程，不重复写入w指令。
+      if (wifiCommandPromise)
       {
         if (showDebug) console.log(getText('gettingIPAddressWaiting'));
-        return new Promise((resolve) =>
-        {
-          const checkInterval = setInterval(() =>
-          {
-            if (!isGettingIP)
-            {
-              clearInterval(checkInterval);
-              if (showDebug) console.log(getText('ipAddressAcquisitionComplete') + ': ' + currentDeviceIP);
-              resolve();
-            }
-          }, 500);
-        });
+        return wifiCommandPromise;
       }
+
+      wifiCommandPromise = (async () =>
+      {
+        isGettingIP = true;
+        const maxAttempts = 3;
+        const responseTimeoutMs = 4000;
+        const encoder = new TextEncoder();
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+          // 先注册等待器，再发送指令，只接受解析器确认的IP响应。
+          const ipWait = waitForDetectedIP(responseTimeoutMs);
+          try
+          {
+            await writer.write(encoder.encode('w\n'));
+          } catch (writeError)
+          {
+            ipWait.cancel();
+            throw writeError;
+          }
+          console.log(getText('wifiCommandSent') + ` (attempt ${attempt}/${maxAttempts})`);
+
+          const detectedIP = await ipWait.promise;
+          if (detectedIP && detectedIP !== '192.168.4.1')
+          {
+            if (showDebug) console.log(getText('successfullyAcquiredIPAddress') + ': ' + detectedIP);
+            hasShownWifiDialog = false;
+            return true;
+          }
+
+          // 192.168.4.1是机器人的默认AP地址，表示尚未连入用户的WiFi，
+          // 已经收到明确响应，无需继续重试，下方将显示配置对话框。
+          if (detectedIP === '192.168.4.1')
+          {
+            break;
+          }
+
+          if (attempt < maxAttempts)
+          {
+            if (showDebug) console.log(`No IP response on attempt ${attempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+
+        console.log(getText('noValidIPReceived'));
+        showWifiConfigDialog(forceShowDialog);
+        return false;
+      })();
 
       try
       {
-        isGettingIP = true;
-        // 发送'w'指令获取IP地址
-        const command = 'w\n';
-        await writer.write(new TextEncoder().encode(command));
-        console.log(getText('wifiCommandSent'));
-
-        // 返回一个Promise，等待IP地址获取
-        return new Promise((resolve, reject) =>
-        {
-          // 等待一段时间让设备响应
-          setTimeout(() =>
-          {
-            isGettingIP = false;
-            // 检查是否获取到了IP地址
-            if (!currentDeviceIP || currentDeviceIP === '192.168.4.1')
-            {
-              // 如果没有获取到IP地址或获取到的是默认AP模式IP，显示WiFi配置界面
-              console.log(getText('noValidIPReceived'));
-              showWifiConfigDialog(forceShowDialog);
-              resolve(); // 即使没有获取到IP也resolve，让程序继续执行
-            } else
-            {
-              if (showDebug) console.log(getText('successfullyAcquiredIPAddress') + ': ' + currentDeviceIP);
-              // 成功获取IP地址后重置WiFi对话框标志，允许下次失败时再次显示
-              hasShownWifiDialog = false;
-              resolve();
-            }
-          }, 3000); // 等待3秒
-        });
-
+        return await wifiCommandPromise;
       } catch (error)
       {
-        isGettingIP = false;
         console.error('Failed to send WiFi command:', error);
-        // 发送失败时显示WiFi配置界面
         showWifiConfigDialog(forceShowDialog);
-        return Promise.reject(error);
+        throw error;
+      } finally
+      {
+        isGettingIP = false;
+        wifiCommandPromise = null;
       }
     }
 
@@ -6464,7 +6559,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
             await writer.write(encoder.encode('?'));
 
             const startTime = Date.now();
-            const keywordRegex = /(Bittle|Nybble|Petoi|Chero)/i;
+            const keywordRegex = /(Bittle|Nybble|Petoi|Chero|Quaddle)/i;
             let matched = false;
 
             // 轮询缓冲区，等待固件自报信息
@@ -6554,8 +6649,12 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           {
             // 检查是否找到"IP Address:"字符串
             const ipAddressPosition = line.indexOf("IP Address:");
+            if (ipAddressPosition < 0) continue;
             const afterPrefix = line.substring(ipAddressPosition).trim();
-            const possibleIPMatch = afterPrefix.match(/^IP Address:\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+            // 同时兼容：
+            //   IP Address: 192.168.2.118
+            //   IP Address: 192.168.2.120. Wifi already connected
+            const possibleIPMatch = afterPrefix.match(/^IP Address:\s*(\d{1,3}(?:\.\d{1,3}){3})(?=\D|$)/);
             if (possibleIPMatch)
             {
               // 取消任何正在进行的IP检查定时器
@@ -7016,23 +7115,25 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           // 保存设备IP到全局变量
           currentDeviceIP = ip;
 
-          // 修改Quick Connect按钮样式和文本
-          updateQuickConnectButtonState(ip);
-
-          // 查找工作区中的make_connection积木块并更新IP地址
-          const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
-          if (makeConnectionBlocks && makeConnectionBlocks.length > 0)
-          {
-            // 更新第一个make_connection积木块的IP_ADDRESS字段
-            makeConnectionBlocks[0].setFieldValue(ip, 'IP_ADDRESS');
-          }
-
-          // 如果获取到IP地址，关闭可能存在的WiFi配置对话框
-          closeWifiDialog();
-
           // 保存到配置文件
           await saveConfig();
         }
+
+        // 每次收到有效IP都同步UI，即使IP本身没有变化，
+        // 也要防止按钮或积木保留旧状态。
+        updateQuickConnectButtonState(ip);
+        const makeConnectionBlocks = workspace.getBlocksByType('make_connection');
+        if (makeConnectionBlocks && makeConnectionBlocks.length > 0)
+        {
+          makeConnectionBlocks[0].setFieldValue(ip, 'IP_ADDRESS');
+        }
+        closeWifiDialog();
+
+        // UI同步完成后通知正在等待w指令响应的流程。
+        // 即使IP与当前值相同，这仍然是设备对本次请求的明确有效响应。
+        const waiters = ipResponseWaiters;
+        ipResponseWaiters = [];
+        waiters.forEach(resolve => resolve(ip));
       } else
       {
         console.log(getText("invalidIPFormat").replace("{ip}", ip));
