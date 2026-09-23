@@ -999,7 +999,7 @@ function blocklyGlobalConfig() {
         }
     }
 
-    // 陀螺仪控制积木
+    // 平衡反馈控制积木（gB/gb）
     Blockly.Blocks["gyro_control"] = {
         init: function () {
             this.jsonInit({

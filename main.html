@@ -1901,7 +1901,7 @@
         // 将积木块移动到合适的位置
         connectionBlock.moveBy(50, 50);
 
-        // init gyro_control block, set gyro_control block to disable, connect gyro_control block to connection block
+        // Initialize the balance-feedback block as off and connect it after the connection block.
         const gyroControlBlock = workspace.newBlock('gyro_control');
         gyroControlBlock.setFieldValue("0", 'STATE');
         gyroControlBlock.initSvg();

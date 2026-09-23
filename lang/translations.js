@@ -208,7 +208,7 @@ const TRANSLATIONS = {
     "delayMessage": "延时 {delay} 秒...",
 
     // 积木文本 - 传感器
-    "gyroControl": "陀螺仪 %1",
+    "gyroControl": "平衡反馈 %1",
 
     // 积木文本 - 控制台
     "consoleLogVariable": "在控制台输出变量 %1",
@@ -270,8 +270,8 @@ const TRANSLATIONS = {
     "light": "光线",
     "temperature": "温度",
     "humidity": "湿度",
-    "gyroEnable": "启用",
-    "gyroDisable": "禁用",
+    "gyroEnable": "开启",
+    "gyroDisable": "关闭",
 
     // 连接和错误相关消息
     "connectingDevice": "正在连接设备: ",
@@ -813,7 +813,7 @@ const TRANSLATIONS = {
     "delayMessage": "delay {delay} seconds...",
 
     // Block text - Sensors
-    "gyroControl": "gyroscope %1",
+    "gyroControl": "balance feedback %1",
 
     // Block text - Console
     "consoleLogVariable": "log variable to console %1",
@@ -875,8 +875,8 @@ const TRANSLATIONS = {
     "light": "Light",
     "temperature": "Temperature",
     "humidity": "Humidity",
-    "gyroEnable": "enable",
-    "gyroDisable": "disable",
+    "gyroEnable": "on",
+    "gyroDisable": "off",
 
     // Connection and error related messages
     "connectingDevice": "Connecting to device: ",
@@ -1424,7 +1424,7 @@ const TRANSLATIONS = {
     "delayMessage": "{delay} 秒待機中...",
 
     // ブロックテキスト - センサー
-    "gyroControl": "ジャイロスコープ %1",
+    "gyroControl": "バランスフィードバック %1",
 
     // ブロックテキスト - コンソール
     "consoleLogVariable": "変数をコンソールに出力 %1",
@@ -1480,8 +1480,8 @@ const TRANSLATIONS = {
     "light": "光",
     "temperature": "温度",
     "humidity": "湿度",
-    "gyroEnable": "有効",
-    "gyroDisable": "無効",
+    "gyroEnable": "オン",
+    "gyroDisable": "オフ",
 
     // 接続およびエラー関連メッセージ
     "connectingDevice": "デバイスに接続中: ",

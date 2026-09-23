@@ -127,9 +127,9 @@
         },
         {
           "type": "gyro_control",
-          "name": "Gyro Control",
-          "description": "Enable or disable gyroscope",
-          "fields": [{"name": "STATE", "type": "field_dropdown", "options": ["Enable(1)", "Disable(0)"]}],
+          "name": "Balance Feedback Control",
+          "description": "Turn balance feedback on or off (gB/gb); this does not stop IMU updates",
+          "fields": [{"name": "STATE", "type": "field_dropdown", "options": ["On(1)", "Off(0)"]}],
           "previousStatement": true,
           "nextStatement": true,
           "js_code": "encodeCommand('g', [state==1?'B':'b'])"
@@ -452,7 +452,7 @@
       }
     },
     "token_commands": {
-      "g": {"description": "Gyro control", "params": "B(enable) or b(disable)", "example": "encodeCommand('g', ['B'])", "encoding": "MUST use encodeCommand"},
+      "g": {"description": "Balance feedback control", "params": "B(on) or b(off)", "example": "encodeCommand('g', ['B'])", "encoding": "MUST use encodeCommand"},
       "j": {"description": "Query joint angles", "params": "jointId or empty for all", "example": "webRequest('j')", "encoding": "direct string, NO encodeCommand", "response": "=\\nindexes\\nangles\\nj"},
       "m": {"description": "Move joints sequentially", "params": "[jointId, angle, ...]", "example": "encodeCommand('m', [0, 30, 1, -20])", "encoding": "MUST use encodeCommand"},
       "i": {"description": "Move joints simultaneously", "params": "[jointId, angle, ...]", "example": "encodeCommand('i', [0, 30, 1, -20])", "encoding": "MUST use encodeCommand"},
