@@ -371,20 +371,12 @@ function blocklyGlobalConfig() {
         ["led","27"],
     ];
 
-    const jointOptions = [
-        [getText("jointHeadPanning"), "0"],
-        [getText("jointHeadTiltingNybble"), "1"],
-        [getText("jointTailNybble"), "2"],
-        [getText("jointReserved"), "3"],
-        [getText("jointLFArm"), "8"],
-        [getText("jointRFArm"), "9"],
-        [getText("jointRBArm"), "10"],
-        [getText("jointLBArm"), "11"],
-        [getText("jointLFKnee"), "12"],
-        [getText("jointRFKnee"), "13"],
-        [getText("jointRBKnee"), "14"],
-        [getText("jointLBKnee"), "15"],
-    ];
+    // Recalculate these options whenever Blockly is initialized. The product can
+    // be changed from main.html without reloading the whole page.
+    const jointOptions = PetoiProducts.getJointOptions(
+        getText,
+        PetoiProducts.fromUrl() || PetoiProducts.defaultType
+    );
 
     // 通信积木
     Blockly.Blocks["make_connection"] = {

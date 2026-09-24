@@ -165,6 +165,120 @@
       font-size: 13px;
       color: var(--sub);
     }
+
+    .enter-link.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .product-dialog {
+      width: min(520px, calc(100% - 32px));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0;
+      color: var(--text);
+      box-shadow: 0 24px 64px rgba(20, 40, 80, 0.24);
+    }
+
+    .product-dialog::backdrop {
+      background: rgba(24, 35, 63, 0.48);
+      backdrop-filter: blur(2px);
+    }
+
+    .product-dialog form {
+      padding: 24px;
+    }
+
+    .product-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .product-dialog h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .product-dialog .dialog-lang-select {
+      flex: 0 0 auto;
+      min-width: 92px;
+      background-color: #fff;
+    }
+
+    .product-dialog p {
+      margin: 0 0 18px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+
+    .product-options {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .product-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .product-option:has(input:checked) {
+      border-color: var(--primary);
+      background: #f2f5ff;
+      box-shadow: 0 0 0 1px var(--primary);
+    }
+
+    .product-option input {
+      accent-color: var(--primary);
+    }
+
+    .product-confirm {
+      width: 100%;
+      margin-top: 20px;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .product-confirm:hover {
+      background: var(--primary-hover);
+    }
+
+    @media (max-width: 420px) {
+      .product-dialog form {
+        padding: 20px;
+      }
+
+      .product-dialog-header {
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .product-dialog h2 {
+        font-size: 20px;
+      }
+
+      .product-dialog .dialog-lang-select {
+        min-width: 84px;
+        padding-left: 8px;
+      }
+    }
   </style>
 </head>
 
@@ -182,11 +296,11 @@
     </div>
 
     <div class="links">
-      <a id="enterMainLink" class="enter-link" href="./main.html?lang=en"
+      <a id="enterMainLink" class="enter-link is-disabled" href="./main.html?lang=en" aria-disabled="true"
         data-tooltip="Open the Blockly workspace and program your Petoi robot directly in your browser."
         aria-label="Petoi Web Coding Blocks">Petoi Web Coding Blocks</a>
       <a id="enterSkillComposerLink" class="enter-link is-hidden" href="./skill_composer.html?lang=en" hidden>Petoi Skill Composer (Bittle)</a>
-      <a id="enterRemoteLink" class="enter-link" href="./mobile_remote.html?lang=en"
+      <a id="enterRemoteLink" class="enter-link is-disabled" href="./mobile_remote.html?lang=en" aria-disabled="true"
         data-tooltip="Control your Petoi robot directly in your web browser."
         aria-label="Petoi Web Controller (Under construction)">Petoi Web Controller (Under construction)</a>
     </div>
@@ -195,6 +309,34 @@
     </p>
   </main>
 
+  <dialog id="productDialog" class="product-dialog" aria-labelledby="productDialogTitle"
+    aria-describedby="productDialogDescription">
+    <form id="productForm">
+      <div class="product-dialog-header">
+        <h2 id="productDialogTitle">Select product type</h2>
+        <select id="productLangSelect" class="lang-select dialog-lang-select" aria-label="Language"
+          onchange="setLanguage(this.value)">
+          <option value="en">🇺🇸 En</option>
+          <option value="zh">🇨🇳 Zh</option>
+          <option value="ja">🇯🇵 Ja</option>
+        </select>
+      </div>
+      <p id="productDialogDescription">Select your robot before continuing.</p>
+      <fieldset class="product-options">
+        <label class="product-option"><input type="radio" name="productType" value="bittle" checked>
+          <span>Bittle/Bittle X</span></label>
+        <label class="product-option"><input type="radio" name="productType" value="bittle_arm">
+          <span>Bittle X+Arm</span></label>
+        <label class="product-option"><input type="radio" name="productType" value="nybble">
+          <span>Nybble/Nybble Q</span></label>
+        <label class="product-option"><input type="radio" name="productType" value="quaddle">
+          <span>Quaddle</span></label>
+      </fieldset>
+      <button id="productConfirm" class="product-confirm" type="submit">Confirm</button>
+    </form>
+  </dialog>
+
+  <script src="./js/product_config.js"></script>
   <script>
     const LANGUAGE_STORAGE_KEY = "petoiPreferredLang";
     const SUPPORTED_LANGUAGES = ["zh", "en", "ja"];
@@ -207,7 +349,10 @@
         remoteButton: "Petoi Web Controller (Under construction)",
         mainLinkTooltip: "打开 Blockly 工作区，在浏览器中直接为你的 Petoi 机器人编程。",
         remoteLinkTooltip: "在网页浏览器中直接控制你的 Petoi 机器人。",
-        langHint: "当前语言会自动传递给工作区，作为 main 页面默认语言。"
+        langHint: "当前语言会自动传递给工作区，作为 main 页面默认语言。",
+        productDialogTitle: "选择产品类型",
+        productDialogDescription: "请选择机器人型号，确认后才能继续操作。",
+        productConfirm: "确认"
       },
       en: {
         appTitle: "Petoi Coding Portal",
@@ -216,7 +361,10 @@
         remoteButton: "Petoi Web Controller (Under construction)",
         mainLinkTooltip: "Open the Blockly workspace and program your Petoi robot directly in your browser.",
         remoteLinkTooltip: "Control your Petoi robot directly in your web browser.",
-        langHint: "The selected language will be used as the default language in the workspace."
+        langHint: "The selected language will be used as the default language in the workspace.",
+        productDialogTitle: "Select product type",
+        productDialogDescription: "Choose your robot model before continuing.",
+        productConfirm: "Confirm"
       },
       ja: {
         appTitle: "Petoiコーディングポータル",
@@ -225,7 +373,10 @@
         remoteButton: "Petoi Web Controller (Under construction)",
         mainLinkTooltip: "Blockly ワークスペースを開き、ブラウザから Petoi ロボットを直接プログラムできます。",
         remoteLinkTooltip: "ウェブブラウザから Petoi ロボットを直接操作できます。",
-        langHint: "選択した言語は自動的に main ページへ引き継がれ、初期言語として適用されます。"
+        langHint: "選択した言語は自動的に main ページへ引き継がれ、初期言語として適用されます。",
+        productDialogTitle: "製品タイプを選択",
+        productDialogDescription: "続行する前にロボットのモデルを選択してください。",
+        productConfirm: "確認"
       }
     };
 
@@ -277,6 +428,38 @@
     }
 
     let currentLang = getInitialLanguage();
+    let selectedProductType = PetoiProducts.fromStorage();
+
+    function buildPageUrl(page)
+    {
+      const params = new URLSearchParams({ lang: currentLang, product: selectedProductType });
+      return page + "?" + params.toString();
+    }
+
+    function updatePortalAccess()
+    {
+      document.querySelectorAll(".enter-link:not([hidden])").forEach(function (link)
+      {
+        link.classList.toggle("is-disabled", !selectedProductType);
+        link.setAttribute("aria-disabled", selectedProductType ? "false" : "true");
+      });
+
+      if (!selectedProductType) return;
+      document.getElementById("enterMainLink").href = buildPageUrl("./main.html");
+      document.getElementById("enterRemoteLink").href = buildPageUrl("./mobile_remote.html");
+    }
+
+    function updateProductSelection()
+    {
+      if (!selectedProductType) return;
+      const productInput = document.querySelector(
+        'input[name="productType"][value="' + selectedProductType + '"]'
+      );
+      if (productInput)
+      {
+        productInput.checked = true;
+      }
+    }
 
     function renderPortalLanguage()
     {
@@ -293,6 +476,12 @@
         langSelect.value = currentLang;
       }
 
+      const productLangSelect = document.getElementById("productLangSelect");
+      if (productLangSelect)
+      {
+        productLangSelect.value = currentLang;
+      }
+
       const appTitle = TEXTS[currentLang].appTitle || "Petoi Coding Portal";
       document.title = appTitle;
       document.getElementById("portalTitle").textContent = appTitle;
@@ -303,14 +492,16 @@
       mainLink.textContent = TEXTS[currentLang].enterButton || "Petoi Web Coding Blocks";
       mainLink.setAttribute("data-tooltip", mainTooltip);
       mainLink.setAttribute("aria-label", (TEXTS[currentLang].enterButton || "Petoi Web Coding Blocks") + ". " + mainTooltip);
-      mainLink.href = "./main.html?lang=" + encodeURIComponent(currentLang);
 
       const remoteLink = document.getElementById("enterRemoteLink");
       const remoteTooltip = TEXTS[currentLang].remoteLinkTooltip || "";
       remoteLink.textContent = TEXTS[currentLang].remoteButton || "Petoi Web Controller (Under construction)";
       remoteLink.setAttribute("data-tooltip", remoteTooltip);
       remoteLink.setAttribute("aria-label", (TEXTS[currentLang].remoteButton || "Petoi Web Controller") + ". " + remoteTooltip);
-      remoteLink.href = "./mobile_remote.html?lang=" + encodeURIComponent(currentLang);
+      document.getElementById("productDialogTitle").textContent = TEXTS[currentLang].productDialogTitle;
+      document.getElementById("productDialogDescription").textContent = TEXTS[currentLang].productDialogDescription;
+      document.getElementById("productConfirm").textContent = TEXTS[currentLang].productConfirm;
+      updatePortalAccess();
     }
 
     function setLanguage(lang)
@@ -333,7 +524,30 @@
       renderPortalLanguage();
     }
 
+    document.getElementById("productDialog").addEventListener("cancel", function (event)
+    {
+      event.preventDefault();
+    });
+
+    document.getElementById("productForm").addEventListener("submit", function (event)
+    {
+      event.preventDefault();
+      const selection = new FormData(event.currentTarget).get("productType");
+      if (!PetoiProducts.isValidType(selection)) return;
+      selectedProductType = selection;
+      PetoiProducts.store(selection);
+      updateProductSelection();
+      updatePortalAccess();
+      document.getElementById("productDialog").close();
+    });
+
     renderPortalLanguage();
+    updateProductSelection();
+    updatePortalAccess();
+    if (!selectedProductType)
+    {
+      document.getElementById("productDialog").showModal();
+    }
   </script>
 </body>
 

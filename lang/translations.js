@@ -2,6 +2,7 @@ const TRANSLATIONS = {
   zh: {
     // 按钮和标题
     "appTitle": "Petoi陪拓网页编程积木",
+    "productType": "产品",
     "showCode": "显示代码",
     "runCode": "运行",
     "stopCode": "停止",
@@ -309,9 +310,12 @@ const TRANSLATIONS = {
     "usingMockHttpRequest": "注意：使用了模拟HTTP请求，返回的是假设备型号",
 
     // Joint names - 关节名称
-    "jointHeadPanning": "头偏转角",
-    "jointHeadTiltingNybble": "头俯仰角(狸宝)",
-    "jointTailNybble": "尾巴(狸宝)",
+    "jointHeadPanning": "头偏转",
+    "jointHeadTiltingNybble": "头俯仰",
+    "jointTailNybble": "尾巴",
+    "jointGripperPanning": "夹爪偏转",
+    "jointGripperLifting": "夹爪升降",
+    "jointGripperOpening": "夹爪开合",
     "jointLFArm": "左前臂",
     "jointRFArm": "右前臂",
     "jointRBArm": "右后臂",
@@ -320,7 +324,11 @@ const TRANSLATIONS = {
     "jointRFKnee": "右前膝",
     "jointRBKnee": "右后膝",
     "jointLBKnee": "左后膝",
-    "jointReserved": "预留",
+    "jointLFLeg": "左前腿",
+    "jointRFLeg": "右前腿",
+    "jointRBLeg": "右后腿",
+    "jointLBLeg": "左后腿",
+    "jointReserved": "空闲",
 
     // Joint block UI text
     "setJointLabel": "设置关节",
@@ -607,6 +615,7 @@ const TRANSLATIONS = {
   en: {
     // Buttons and titles
     "appTitle": "Petoi Web Coding Blocks",
+    "productType": "Product",
     "showCode": "Show Code",
     "runCode": "Run",
     "stopCode": "Stop",
@@ -915,8 +924,11 @@ const TRANSLATIONS = {
 
     // Joint names - 关节名称
     "jointHeadPanning": "head panning",
-    "jointHeadTiltingNybble": "head tilting (nybble)",
-    "jointTailNybble": "tail (nybble)",
+    "jointHeadTiltingNybble": "head tilting",
+    "jointTailNybble": "tail",
+    "jointGripperPanning": "gripper panning",
+    "jointGripperLifting": "gripper lifting",
+    "jointGripperOpening": "gripper opening/closing",
     "jointLFArm": "left front arm",
     "jointRFArm": "right front arm",
     "jointRBArm": "right back arm",
@@ -925,7 +937,11 @@ const TRANSLATIONS = {
     "jointRFKnee": "right front knee",
     "jointRBKnee": "right back knee",
     "jointLBKnee": "left back knee",
-    "jointReserved": "reserved",
+    "jointLFLeg": "left front leg",
+    "jointRFLeg": "right front leg",
+    "jointRBLeg": "right back leg",
+    "jointLBLeg": "left back leg",
+    "jointReserved": "idle",
 
     // Joint block UI text
     "setJointLabel": "set joint",
@@ -1211,6 +1227,7 @@ const TRANSLATIONS = {
   ja: {
     // ボタンとタイトル
     "appTitle": "Petoiウェブコーディングブロック",
+    "productType": "製品",
     "showCode": "コード表示",
     "runCode": "実行",
     "stopCode": "停止",
@@ -1520,8 +1537,11 @@ const TRANSLATIONS = {
 
     // 関節名
     "jointHeadPanning": "頭部パン",
-    "jointHeadTiltingNybble": "頭部チルト（Nybble）",
-    "jointTailNybble": "しっぽ（Nybble）",
+    "jointHeadTiltingNybble": "頭部チルト",
+    "jointTailNybble": "しっぽ",
+    "jointGripperPanning": "グリッパー旋回",
+    "jointGripperLifting": "グリッパー昇降",
+    "jointGripperOpening": "グリッパー開閉",
     "jointLFArm": "左前腕",
     "jointRFArm": "右前腕",
     "jointRBArm": "右後腕",
@@ -1530,7 +1550,11 @@ const TRANSLATIONS = {
     "jointRFKnee": "右前膝",
     "jointRBKnee": "右後膝",
     "jointLBKnee": "左後膝",
-    "jointReserved": "予約済み",
+    "jointLFLeg": "左前脚",
+    "jointRFLeg": "右前脚",
+    "jointRBLeg": "右後脚",
+    "jointLBLeg": "左後脚",
+    "jointReserved": "アイドル",
 
     // ジョイントブロックUIテキスト
     "setJointLabel": "関節を設定",

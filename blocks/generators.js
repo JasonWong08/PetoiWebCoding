@@ -289,7 +289,7 @@ Blockly.JavaScript.forBlock["gyro_control"] = function (block) {
 Blockly.JavaScript.forBlock["get_sensor_input"] = function (block) {
     var sensor = block.getFieldValue("SENSOR");
     return [
-        `(async () => { checkStopExecution(); return parseInt(await webRequest("${sensor}", 5000, true)) || 0; })()`,
+        `(await (async () => { checkStopExecution(); return parseSingleResult(await webRequest("${sensor}", 5000, true)); })())`,
         Blockly.JavaScript.ORDER_FUNCTION_CALL,
     ];
 };
@@ -437,8 +437,8 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_seq"] = function (
     let code = `
 checkStopExecution();
 await (async function() {
-  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   const command = await encodeMoveCommand("${token}", ${variableText});
+  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
   if (!((typeof window !== 'undefined') && window.petoiClient) && typeof waitForSerialTokenLine === 'function') {
     await waitForSerialTokenLine('m', 15000, __from);
@@ -479,8 +479,8 @@ javascript.javascriptGenerator.forBlock["set_joints_angle_sim"] = function (
     let code = `
 checkStopExecution();
 await (async function() {
-  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   const command = await encodeMoveCommand("${token}", ${variableText});
+  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
   if (!((typeof window !== 'undefined') && window.petoiClient) && typeof waitForSerialTokenLine === 'function') {
     await waitForSerialTokenLine('i', 30000, __from);
@@ -572,8 +572,8 @@ javascript.javascriptGenerator.forBlock["set_joint_angle"] = function (block) {
     let code = `
 checkStopExecution();
 await (async function() {
-  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   const command = await encodeMoveCommand("${token}", ${variableText});
+  const __from = (typeof serialBuffer === 'string') ? serialBuffer.length : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
   await webRequest(command, ${COMMAND_TIMEOUT_MAX}, true);
   if (!((typeof window !== 'undefined') && window.petoiClient) && typeof waitForSerialTokenLine === 'function') {
     await waitForSerialTokenLine('m', 15000, __from);
@@ -634,7 +634,7 @@ javascript.javascriptGenerator.forBlock["get_joint_angle"] = function (block) {
     const jointId = block.getFieldValue("JOINT");
     const command = encodeCommand("j", [jointId]);
     return [
-        `(async () => { checkStopExecution(); return parseInt(await webRequest("${command}", 5000, true)) || 0; })()`,
+        `(await (async () => { checkStopExecution(); return parseSingleResult(await webRequest("${command}", 5000, true)); })())`,
         Blockly.JavaScript.ORDER_FUNCTION_CALL,
     ];
 };

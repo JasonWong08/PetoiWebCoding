@@ -25,6 +25,19 @@
   <!-- <script src="./lib/blockly/msg/en.js"></script> -->
   <!-- 3. 加载自定义翻译 -->
   <script src="./lang/translations.js"></script>
+  <script src="./js/product_config.js"></script>
+  <script>
+    // Product selection is mandatory. Keep direct/bookmarked IDE URLs from
+    // initializing Blockly without an explicit, valid product choice.
+    if (!window.PetoiProducts.fromUrl())
+    {
+      const lang = new URLSearchParams(window.location.search).get('lang') || 'en';
+      window.location.replace('./index.html?lang=' + encodeURIComponent(lang));
+    } else
+    {
+      window.PetoiProducts.store(window.PetoiProducts.fromUrl());
+    }
+  </script>
   <!-- 4. 加载超时配置 -->
   <script src="./js/timeout_config.js"></script>
   <!-- 5. 然后加载自定义积木块文件 -->
@@ -41,6 +54,16 @@
     <div class="title" data-i18n="appTitle">Petoi Web Coding Blocks</div>
     <div class="header-right">
       <div class="version-date" id="versionDate"></div>
+      <label class="product-switch" for="productSelect">
+        <span class="product-switch-label" data-i18n="productType">Product</span>
+        <select id="productSelect" class="product-select" data-i18n-title="productType"
+          aria-label="Product type" onchange="setProductType(this.value)">
+          <option value="bittle">Bittle/Bittle X</option>
+          <option value="bittle_arm">Bittle X+Arm</option>
+          <option value="nybble">Nybble/Nybble Q</option>
+          <option value="quaddle">Quaddle</option>
+        </select>
+      </label>
       <div class="language-switch">
         <select id="langSelect" class="lang-select" aria-label="Language" onchange="setLanguage(this.value)">
           <option value="en">🇺🇸 En</option>
@@ -139,6 +162,7 @@
 
     // Current language
     let isChangingLanguage = false;
+    let isChangingProduct = false;
     // save entry block ids
     let startBlockIds = [];
 
@@ -187,8 +211,8 @@
     }
 
     // Global version date variable (format: vYear.Month.Day)
-    const GLOBAL_VERSION_DATE = "v2026.06.19";
-    const GLOBAL_VERSION_LAST_MODIFIED = "2026-06-19 14:48:47";
+    const GLOBAL_VERSION_DATE = "v2026.09.24";
+    const GLOBAL_VERSION_LAST_MODIFIED = "2026-09-24 17:08:50";
 
     // Set version date
     function setVersionDate()
@@ -1526,6 +1550,70 @@
       }
     }
 
+    function updateProductSelector(productType)
+    {
+      const productSelect = document.getElementById('productSelect');
+      if (productSelect && productSelect.value !== productType)
+      {
+        productSelect.value = productType;
+      }
+    }
+
+    function setProductType(productType)
+    {
+      if (isChangingProduct || !window.PetoiProducts.isValidType(productType))
+      {
+        return;
+      }
+
+      const currentProductType = window.PetoiProducts.fromUrl();
+      if (currentProductType === productType)
+      {
+        updateProductSelector(productType);
+        return;
+      }
+
+      isChangingProduct = true;
+      const productSelect = document.getElementById('productSelect');
+      if (productSelect)
+      {
+        productSelect.disabled = true;
+      }
+
+      try
+      {
+        const workspaceState = workspace ? saveCurrentWorkspace() : null;
+        window.PetoiProducts.store(productType);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('product', productType);
+        window.history.replaceState({}, '', url);
+        updateProductSelector(productType);
+
+        if (workspace)
+        {
+          workspace.dispose();
+          initWorkspace();
+          if (workspaceState)
+          {
+            restoreWorkspace(workspaceState);
+          }
+          updateUndoRedoState();
+        }
+      } catch (error)
+      {
+        console.error('Failed to change product type:', error);
+        updateProductSelector(currentProductType);
+      } finally
+      {
+        if (productSelect)
+        {
+          productSelect.disabled = false;
+        }
+        isChangingProduct = false;
+      }
+    }
+
     function getInitialLanguage()
     {
       let urlLang = '';
@@ -1622,6 +1710,7 @@
       cleanupResidualDialogs();
 
       const initialLang = getInitialLanguage();
+      updateProductSelector(window.PetoiProducts.fromUrl());
 
       // 先同步设置语言按钮，避免语言文件异步加载期间出现错误高亮
       updateLanguageButtons(initialLang);
