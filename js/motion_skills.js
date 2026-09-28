@@ -117,7 +117,8 @@
       Object.freeze({ command: "khunt", labelKey: "armHunt", products: Object.freeze(["bittle_arm"]) }),
       Object.freeze({ command: "kshowOff", labelKey: "armShowOff", products: Object.freeze(["bittle_arm"]) }),
       Object.freeze({ command: "kclap", labelKey: "armClap", products: Object.freeze(["bittle_arm"]) }),
-      Object.freeze({ command: "ktossD", labelKey: "armThrowDown", products: Object.freeze(["bittle_arm"]) }),
+      // Temporarily hidden until the toss-down skill implementation is improved.
+      // Object.freeze({ command: "ktossD", labelKey: "armThrowDown", products: Object.freeze(["bittle_arm"]) }),
       Object.freeze({ command: "kheadToss", labelKey: "specialHeadToss", products: Object.freeze(["nybble"]) }),
       Object.freeze({ command: "kknock", labelKey: "specialKnock", products: Object.freeze(["nybble"]) }),
       Object.freeze({ command: "klkPaws", labelKey: "specialLickPaws", products: Object.freeze(["nybble"]) }),
