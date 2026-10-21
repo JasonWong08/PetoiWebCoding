@@ -18,6 +18,7 @@ const COMMAND_TIMEOUT_MAX = TIMEOUT_CONFIG.COMMAND.DEFAULT_TIMEOUT; // Default c
 const LONG_COMMAND_TIMEOUT = TIMEOUT_CONFIG.COMMAND.LONG_COMMAND_TIMEOUT; // Long command timeout
 const ACROBATIC_MOVES_TIMEOUT = TIMEOUT_CONFIG.COMMAND.ACROBATIC_MOVES_TIMEOUT; // Acrobatic moves timeout
 const JOINT_QUERY_TIMEOUT = TIMEOUT_CONFIG.COMMAND.JOINT_QUERY_TIMEOUT; // Joint query timeout
+const BEHAVIOR_COMMAND_TIMEOUT = TIMEOUT_CONFIG.COMMAND.COMPLEX_ACTION_TIMEOUT; // One-shot behavior timeout
 
 Blockly.JavaScript.forBlock["gait"] = function (block) {
     const cmd = block.getFieldValue("COMMAND");
@@ -227,10 +228,10 @@ await (async function() {
   const __from = (typeof serialBuffer === 'string')
     ? serialBuffer.length
     : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer.length : undefined);
-  await webRequest("${cmd}", 10000, true);
+  await webRequest("${cmd}", ${BEHAVIOR_COMMAND_TIMEOUT}, true);
   if (!((typeof window !== 'undefined') && window.petoiClient) && typeof waitForSerialTokenLine === 'function') {
     const _tok = '${cmd}'.charAt(0);
-    await waitForSerialTokenLine(_tok, 15000, __from);
+    await waitForSerialTokenLine(_tok, ${BEHAVIOR_COMMAND_TIMEOUT}, __from);
   }
   if (typeof window !== 'undefined') window.__lastTokenReceivedAt = Date.now();
   return true;
@@ -312,13 +313,15 @@ Blockly.JavaScript.forBlock["send_custom_command"] = function (block) {
       }
       const result = await webRequest(${command}, ${LONG_COMMAND_TIMEOUT}, true);
     `) + '\n';
-    // If custom command starts with 'm'/'k'/'d', wait for corresponding completion marker in serial mode; otherwise skip
+    // If custom command starts with 'm'/'k'/'d', wait for the completion marker in serial mode.
+    // Quaddle queue macros echo one intermediate 'k' and one final 'k', so only the second one completes the macro.
     code += `if (!((typeof window !== 'undefined') && window.petoiClient) && typeof waitForSerialTokenLine === 'function') { try { 
   const _c = ${command}; 
   const _t = (typeof _c === 'string' && _c.length>0) ? _c[0] : null; 
   if (_t && ('mkd'.includes(_t))) { 
     const __from = (typeof window !== 'undefined' && typeof window.__lastSerialStartIndex === 'number') ? window.__lastSerialStartIndex : undefined;
-    await waitForSerialTokenLine(_t, ${LONG_COMMAND_TIMEOUT}, __from); 
+    const __isQuaddleQueueMacro = typeof _c === 'string' && /^(?:kqStep(?:Half)?|kqDance|kqScoot|kqFrontScoot|kqBiped|ktriCat)(?:\\s|$)/i.test(_c.trim());
+    await waitForSerialTokenLine(_t, ${LONG_COMMAND_TIMEOUT}, __from, __isQuaddleQueueMacro ? 2 : 1);
   } 
   if (typeof window !== 'undefined') window.__lastSerialStartIndex = null;
 } catch(e) {} }\n`;

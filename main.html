@@ -212,8 +212,8 @@
     }
 
     // Global version date variable (format: vYear.Month.Day)
-    const GLOBAL_VERSION_DATE = "v2026.09.26";
-    const GLOBAL_VERSION_LAST_MODIFIED = "2026-09-26 18:50:01";
+    const GLOBAL_VERSION_DATE = "v2026.10.21";
+    const GLOBAL_VERSION_LAST_MODIFIED = "2026-10-21 11:33:30";
 
     // Set version date
     function setVersionDate()
@@ -7235,11 +7235,14 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
     // - expectedToken: 例如 'k' / 'm' / 'd' / 'B' ...
     // - timeoutMs: 超时毫秒
     // - fromIndex: 可选，指定从 serialBuffer 的哪个下标开始等待（推荐在发送命令前记录 serialBuffer.length 传入）
-    async function waitForSerialTokenLine(expectedToken = 'm', timeoutMs = 15000, fromIndex)
+    // - requiredOccurrences: 需要出现多少次独立 token 行。普通动作是 1；队列型组合动作会先返回中间 token，再返回最终 token
+    async function waitForSerialTokenLine(expectedToken = 'm', timeoutMs = 15000, fromIndex, requiredOccurrences = 1)
     {
       try
       {
         const start = Date.now();
+        const targetOccurrences = Math.max(1, Math.floor(Number(requiredOccurrences) || 1));
+        let matchedOccurrences = 0;
         const buf = (typeof serialBuffer === 'string')
           ? serialBuffer
           : ((typeof window !== 'undefined' && typeof window.serialBuffer === 'string') ? window.serialBuffer : '');
@@ -7260,7 +7263,11 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           {
             if (line === expectedToken)
             {
-              return true;
+              matchedOccurrences++;
+              if (matchedOccurrences >= targetOccurrences)
+              {
+                return true;
+              }
             }
           }
         }
@@ -7279,7 +7286,11 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
             {
               if (line === expectedToken)
               {
-                return true;
+                matchedOccurrences++;
+                if (matchedOccurrences >= targetOccurrences)
+                {
+                  return true;
+                }
               }
             }
           }
