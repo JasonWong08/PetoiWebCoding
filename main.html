@@ -132,6 +132,8 @@
             <div class="button-group">
               <button onclick="openSerialPort()" class="serial-button area-compact-btn" id="openSerialBtn"
                 data-area-icon="🔌" data-area-i18n-key="serialConnect">🔌 Connect Serial Port</button>
+              <button onclick="openWifiSerialMonitor()" class="serial-button area-compact-btn" id="openWifiMonitorBtn"
+                style="display: none;" data-area-icon="📶" data-area-i18n-key="openWifiMonitor">📶 Wi-Fi Monitor</button>
               <button id="showSerialTimestampBtn" onclick="toggleShowSerialTimestamp()" class="toggle-button timestamp-toggle-btn area-compact-btn active"
                 style="display: none;" data-area-icon="🕐" data-area-i18n-key="showTimestampLabel">🕐 Time</button>
               <button onclick="closeSerialPort()" class="clear-button area-compact-btn" id="closeSerialBtn" style="display: none;"
@@ -1919,6 +1921,9 @@
           const displayName = getSerialPortDisplayName(port);
           serialTitle.textContent = getText("serialMonitorTitle").replace("{portName}", displayName);
         }
+      } else if (isSerialMonitorVisible() && hasEstablishedWifiConnection())
+      {
+        applyWifiMonitorTitle();
       }
 
       syncAreaHeaderCompactLabels();
@@ -4217,6 +4222,7 @@ Generated at: ${now.toISOString()}
     let port = null;
     let reader = null;
     let writer = null;
+    let wifiMonitorSending = false;
 
     // 添加文件相关变量
     let currentFile = null;
@@ -5722,6 +5728,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
         document.getElementById('showSerialTimestampBtn').style.display = 'inline-flex'; // 显示时间戳按钮
         document.getElementById('closeSerialBtn').style.display = 'inline-flex'; // 显示关闭按钮
         document.getElementById('clearSerialBtn').style.display = 'inline-flex'; // 显示清除按钮
+        updateWifiMonitorButton();
         queueAreaHeaderLabelUpdate();
 
         // 更新串口标题显示连接的设备信息
@@ -5891,6 +5898,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
           serialPortInfo.style.display = 'none';
         }
 
+        updateWifiMonitorButton();
         console.log('Quick serial port close completed');
       } catch (error)
       {
@@ -6341,6 +6349,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       {
         window.applyMobileMainActionLabels();
       }
+      updateWifiMonitorButton();
     }
 
     // 更新快速连接按钮状态（统一管理函数）
@@ -6366,6 +6375,11 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       {
         window.applyMobileMainActionLabels();
       }
+      if (isSerialMonitorVisible() && !writer && !port && hasEstablishedWifiConnection())
+      {
+        applyWifiMonitorTitle();
+      }
+      updateWifiMonitorButton();
     }
 
     // 语言切换时处理快速连接按钮状态
@@ -6397,6 +6411,7 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       {
         window.applyMobileMainActionLabels();
       }
+      updateWifiMonitorButton();
     }
 
     // 将函数暴露到全局作用域，供translations.js调用
@@ -6585,6 +6600,8 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       const outputDiv = document.getElementById('serialOutput');
       if (!outputDiv) return;
 
+      const timestampBtn = document.getElementById('showSerialTimestampBtn');
+      const showSerialTimestamp = !!(timestampBtn && timestampBtn.classList.contains('active'));
       const currentTime = Date.now();
 
       // 创建时间戳容器
@@ -7300,38 +7317,193 @@ RULE: DO NOT insert rest command "d" between actions unless user explicitly asks
       return false;
     }
 
-    async function sendSerialData()
+    function hasEstablishedWifiConnection()
     {
-      if (!writer) return;
+      const quickConnectBtn = document.getElementById('quickConnectBtn');
+      return !!(quickConnectBtn &&
+        quickConnectBtn.getAttribute('data-connected') === 'true' &&
+        currentDeviceIP &&
+        currentDeviceIP !== '192.168.4.1');
+    }
+
+    function isSerialMonitorVisible()
+    {
+      const serialInterface = document.getElementById('serialInterface');
+      if (!serialInterface) return false;
+      return serialInterface.style.display !== 'none' && serialInterface.style.display !== '';
+    }
+
+    function updateWifiMonitorButton()
+    {
+      const btn = document.getElementById('openWifiMonitorBtn');
+      if (!btn) return;
+      const serialBusy = !!(writer || port);
+      const show = hasEstablishedWifiConnection() && !serialBusy && !isSerialMonitorVisible();
+      btn.style.display = show ? 'inline-flex' : 'none';
+      queueAreaHeaderLabelUpdate();
+    }
+
+    function applyWifiMonitorTitle()
+    {
+      const serialTitle = document.getElementById('serialOutputTitle');
+      const serialPortInfo = document.getElementById('serialPortInfo');
+      if (serialTitle)
+      {
+        serialTitle.textContent = 'Wi-Fi ' + currentDeviceIP;
+      }
+      if (serialPortInfo)
+      {
+        serialPortInfo.textContent = '';
+        serialPortInfo.style.display = 'none';
+      }
+    }
+
+    function openWifiSerialMonitor()
+    {
+      if (!hasEstablishedWifiConnection() || writer || port) return;
+
+      const serialInterface = document.getElementById('serialInterface');
+      serialInterface.style.display = 'flex';
+      serialInterface.style.flexDirection = 'column';
+      serialInterface.style.height = '200px';
+      serialInterface.style.minHeight = '150px';
+      serialInterface.style.maxHeight = '400px';
+
+      const serialContainer = document.getElementById('serialContainer');
+      serialContainer.classList.add('connected');
+      document.getElementById('consoleWindow').style.flex = '50';
+      serialContainer.style.flex = '49';
+      document.getElementById('console-serial-divider').style.display = 'block';
+      document.getElementById('openSerialBtn').style.display = 'none';
+      document.getElementById('showSerialTimestampBtn').style.display = 'inline-flex';
+      document.getElementById('closeSerialBtn').style.display = 'inline-flex';
+      document.getElementById('clearSerialBtn').style.display = 'inline-flex';
+
+      applyWifiMonitorTitle();
+
+      updateWifiMonitorButton();
+      queueAreaHeaderLabelUpdate();
+      setTimeout(function ()
+      {
+        resizeBlocklyWorkspace();
+        repositionUndoRedoButtons();
+      }, 100);
 
       const input = document.getElementById('serialInput');
-      // 检查输入是否为空
-      if (input.value.trim() === '') return;
+      if (input) input.focus();
+    }
+
+    function rememberSerialCommand(commandText)
+    {
+      if (!commandText || commandText.trim() === '') return;
+      if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== commandText)
+      {
+        commandHistory.push(commandText);
+      }
+      if (commandHistory.length > 50)
+      {
+        commandHistory.shift();
+      }
+      historyIndex = -1;
+      tempInputValue = '';
+    }
+
+    function appendWifiMonitorResult(result)
+    {
+      if (result == null || result === '') return;
+      const text = typeof result === 'string' ? result : JSON.stringify(result);
+      text.split(/\r\n|\r|\n/).forEach((line) =>
+      {
+        if (line.length > 0)
+        {
+          addSerialMessage(line);
+        }
+      });
+    }
+
+    async function ensureMonitorWifiClient()
+    {
+      const targetUrl = `ws://${currentDeviceIP}:81`;
+      let client = window.petoiClient;
+      if (client && client.baseUrl !== targetUrl)
+      {
+        try
+        {
+          client.disconnect();
+        } catch (error)
+        {
+          if (typeof showDebug !== 'undefined' && showDebug)
+          {
+            console.warn('Failed to close the previous Wi-Fi client:', error);
+          }
+        }
+        client = null;
+        window.petoiClient = null;
+      }
+      if (!client)
+      {
+        client = new PetoiAsyncClient(targetUrl);
+        window.petoiClient = client;
+      }
+      if (!client.connected || !client.ws || client.ws.readyState !== WebSocket.OPEN)
+      {
+        await client.connect();
+      }
+      return client;
+    }
+
+    async function sendSerialInputOverWifi(input)
+    {
+      if (wifiMonitorSending) return;
+
+      const allowed = await ensureWifiAccessAllowed(currentDeviceIP);
+      if (!allowed) return;
+      if (writer)
+      {
+        await sendSerialData();
+        return;
+      }
+      if (!hasEstablishedWifiConnection()) return;
+
+      const commandText = input.value;
+      wifiMonitorSending = true;
+      try
+      {
+        const client = await ensureMonitorWifiClient();
+        addSerialMessage('> ' + commandText);
+        const result = await client.sendCommand(commandText.trim());
+        appendWifiMonitorResult(result);
+        rememberSerialCommand(commandText);
+        input.value = '';
+      } catch (error)
+      {
+        console.error(getText('wifiSendError'), error);
+        const detail = (error && error.message) ? error.message : String(error);
+        addSerialMessage(getText('wifiSendError') + detail);
+      } finally
+      {
+        wifiMonitorSending = false;
+      }
+    }
+
+    async function sendSerialData()
+    {
+      const input = document.getElementById('serialInput');
+      if (!input || input.value.trim() === '') return;
+
+      if (!writer)
+      {
+        if (!hasEstablishedWifiConnection()) return;
+        await sendSerialInputOverWifi(input);
+        return;
+      }
 
       const data = input.value + '\n';
 
       try
       {
         await writer.write(new TextEncoder().encode(data));
-
-        // 添加命令到历史记录
-        if (input.value.trim() !== '')
-        {
-          // 避免重复添加相同的命令
-          if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== input.value)
-          {
-            commandHistory.push(input.value);
-          }
-          // 保持历史记录在合理范围内(最多保存50条)
-          if (commandHistory.length > 50)
-          {
-            commandHistory.shift();
-          }
-          // 重置历史索引
-          historyIndex = -1;
-          tempInputValue = '';
-        }
-
+        rememberSerialCommand(input.value);
         input.value = '';
       } catch (error)
       {
